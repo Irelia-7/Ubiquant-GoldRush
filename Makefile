@@ -1,4 +1,4 @@
-module = player1
+module = player
 CC = g++
 CFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=native -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O3 -ffunction-sections -pipe
 CFLAGS += -DNDEBUG -D_FORTIFY_SOURCE=2 -O3 -fPIC

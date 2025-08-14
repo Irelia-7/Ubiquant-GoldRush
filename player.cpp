@@ -5,6 +5,11 @@
 #include <vector>
 #include <thread>   // for std::this_thread::sleep_for
 #include <chrono>   // for std::chrono::seconds
+#include <cmath>
+#include <algorithm>
+
+int MAX_DEPTH = 3;
+int TIME_LIMIT_MS = 1000;
 
 class Player
 {
@@ -14,7 +19,7 @@ public:
     // left, right, up, down, keep still
     const int dx[5] = {-1, 1, 0, 0, 0};
     const int dy[5] = {0, 0, 1, -1, 0};
-    static int round = 0;
+    int round = 0;
 
     struct Node {
         int visits = 0;
@@ -66,21 +71,58 @@ public:
             }
         }
 
-        // 1. Create the root node
+        // // 1. Create the root node
+        // Node root;
+        // root.path = {};
+
+        // // 2. expand the MCTS
+        // expand(root);
+
+        // // 3. Selection
+
+        // // 4. Rollout
+
+        // // 5. Backpropagation
         Node root;
         root.path = {};
 
-        // 2. expand the MCTS
-        expand(root);
+        auto start = std::chrono::high_resolution_clock::now();
 
-        // 3. Selection
+        while (true) {
+            auto now = std::chrono::high_resolution_clock::now();
+            if (std::chrono::duration<double, std::milli>(now - start).count() > TIME_LIMIT_MS)
+                break;
 
-        // 4. Rollout
+            Node* node = select(&root);
+            if (node->path.size() < MAX_DEPTH)
+                expand(node);
 
-        // 5. Backpropagation
+            Node* leaf = node->children.empty() ? node : node->children[rng() % node->children.size()];
+            if (leaf->path.size() == MAX_DEPTH) {
+                double reward = simulate(grid, this->position.first, this->position.second, gold, leaf->path);
+                backpropagate(leaf, reward);
+            }
+        }
+
+        Node* best = nullptr;
+        double best_score = -1;
+        for (auto* child : root.children) {
+            if (child->visits == 0) continue;
+            double avg = child->total_reward / child->visits;
+            if (avg > best_score) {
+                best_score = avg;
+                best = child;
+            }
+        }
+
+        // 输出最优路径前 MAX_DEPTH 步
+        for (int i = 0; i < MAX_DEPTH; ++i)
+            this->data[i] = (best && i < best->path.size()) ? best->path[i] : -1;
+
+        return this->data;
 
 
-        return this->data; // 返回默认的移动决策
+        // return this->data; // 返回默认的移动决策
     }
 
 
@@ -146,7 +188,8 @@ private:
             if (grid[x][y] >= 1)
                 score += grid[x][y];
             else if (grid[x][y] == -3) {
-                int loss = (g * 30 + 99) / 100;
+                // int loss = (g * 30 + 99) / 100;
+                int loss = static_cast<int>(std::ceil(g * 0.1));
                 score -= loss;
                 g = std::max(0, g - loss);
             } else if (grid[x][y] == 0 && x >= 4 && x <= 12 && y >= 4 && y <= 12) {
